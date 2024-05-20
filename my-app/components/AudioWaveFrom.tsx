@@ -18,16 +18,16 @@ const AudioWaveform = () => {
 
 	const fileContext = useContext(FileContext);
 
-    if (!fileContext) {
-        throw new Error("FileContext must be used within a FileContextProvider");
-    }
+	if (!fileContext) {
+		throw new Error("FileContext must be used within a FileContextProvider");
+	}
 
 	// fetch file url from the context
 	const { fileURL, setFileURL } = fileContext
 
-	if(!fileURL){
-		redirect('/')
-	}
+	// if (!fileURL) {
+	// 	redirect('/')
+	// }
 
 	// crate an instance of the wavesurfer
 	const [wavesurferObj, setWavesurferObj] = useState<WaveSurfer | null>(null);
@@ -45,7 +45,7 @@ const AudioWaveform = () => {
 					container: '#waveform',
 					scrollParent: true,
 					autoCenter: true,
-					cursorColor: 'violet',
+					cursorColor: 'blue',
 					loopSelection: true,
 					waveColor: '#23F58C',
 					progressColor: '#9FAF9F',
@@ -54,7 +54,7 @@ const AudioWaveform = () => {
 						TimelinePlugin.create({
 							container: '#wave-timeline',
 						}),
-						RegionsPlugin.create({}),
+						RegionsPlugin.create({})
 					],
 				})
 			);
@@ -108,15 +108,23 @@ const AudioWaveform = () => {
 		if (wavesurferObj) wavesurferObj.zoom(zoom);
 	}, [zoom, wavesurferObj]);
 
-	// when the duration of the audio is available, set the length of the region depending on it, so as to not exceed the total lenght of the audio
+	// when the duration of the audio is available, set the length of the region depending on it, so as to not exceed the total length of the audio
 	useEffect(() => {
 		if (duration && wavesurferObj) {
-			// add a region with default length
-			wavesurferObj.addRegion({
-				start: Math.floor(duration / 2) - Math.floor(duration) / 5, // time in seconds
-				end: Math.floor(duration / 2), // time in seconds
-				color: 'hsla(265, 100%, 86%, 0.4)', // color of the selected region, light hue of purple
-			});
+
+			const region =
+				wavesurferObj.regions.list[
+				Object.keys(wavesurferObj.regions.list)[0]
+				];
+
+			if (!region) {
+				// add a region with default length
+				wavesurferObj.addRegion({
+					start: Math.floor(duration / 2) - Math.floor(duration) / 5, // time in seconds
+					end: Math.floor(duration / 2), // time in seconds
+					color: 'hsla(265, 100%, 86%, 0.4)', // color of the selected region, light hue of purple
+				});
+			}
 		}
 	}, [duration, wavesurferObj]);
 
@@ -136,16 +144,12 @@ const AudioWaveform = () => {
 		setVolume(e.target.value);
 	};
 
-	const handleZoomSlider = (e) => {
-		setZoom(e.target.value);
-	};
-
-	const handleTrim = (e) => {
+	const handleRemove = (e) => {
 		if (wavesurferObj) {
 			// get start and end points of the selected region
 			const region =
 				wavesurferObj.regions.list[
-					Object.keys(wavesurferObj.regions.list)[0]
+				Object.keys(wavesurferObj.regions.list)[0]
 				];
 
 			if (region) {
@@ -207,16 +211,80 @@ const AudioWaveform = () => {
 
 				// load the new_buffer, to restart the wavesurfer's waveform display
 				wavesurferObj.loadDecodedBuffer(new_buffer);
+
+				wavesurferObj.addRegion({
+					start: 0, // time in seconds
+					end: Math.floor(duration), // time in seconds
+					color: 'hsla(265, 100%, 86%, 0.4)', // color of the selected region, light hue of purple
+				});
+
+				const regions = region.wavesurfer.regions.list;
+				const keys = Object.keys(regions);
+				if (keys.length > 1) {
+					regions[keys[0]].remove();
+				}
 			}
 		}
 	};
 
+	const handleCut = (e) => {
+		if (wavesurferObj) {
+			// get start and end points of the selected region
+			const region =
+				wavesurferObj.regions.list[
+				Object.keys(wavesurferObj.regions.list)[0]
+				];
+
+			if (region) {
+				const start = region.start;
+				const end = region.end;
+
+				// obtain the original array of the audio
+				const original_buffer = wavesurferObj.backend.buffer;
+
+				// calculate the length of the new buffer to hold only the selected region
+				const new_length = (end - start) * original_buffer.sampleRate;
+
+				// create a new buffer to hold the selected region
+				const new_buffer = wavesurferObj.backend.ac.createBuffer(
+					original_buffer.numberOfChannels,
+					new_length,
+					original_buffer.sampleRate
+				);
+
+				// create a Float32Array to hold the data for the selected region
+				const selected_region_data = new Float32Array(new_length);
+
+				// copy data from the original buffer for the selected region
+				original_buffer.copyFromChannel(selected_region_data, 0, start * original_buffer.sampleRate);
+				new_buffer.copyToChannel(selected_region_data, 0, 0);
+
+				if (original_buffer.numberOfChannels > 1) {
+					original_buffer.copyFromChannel(selected_region_data, 1, start * original_buffer.sampleRate);
+					new_buffer.copyToChannel(selected_region_data, 1, 0);
+				}
+
+				// load the new buffer, to restart the wavesurfer's waveform display
+				wavesurferObj.loadDecodedBuffer(new_buffer);
+
+				wavesurferObj.addRegion({
+					start: 0, // time in seconds
+					end: Math.floor(duration), // time in seconds
+					color: 'hsla(265, 100%, 86%, 0.4)', // color of the selected region, light hue of purple
+				});
+			}
+		}
+	};
+
+
 	return (
 		<section className='waveform-container'>
-			<div ref={wavesurferRef} id='waveform' />
-			<div ref={timelineRef} id='wave-timeline' />
+			<div>
+				<div ref={wavesurferRef} id='waveform' />
+				<div ref={timelineRef} id='wave-timeline' />
+			</div>
 			<div className='all-controls'>
-				<div className='left-container'>
+				<div className='left-container display-flex flex-col'>
 					<button
 						title='play/pause'
 						className='controls'
@@ -227,39 +295,38 @@ const AudioWaveform = () => {
 							<i className='material-icons'>play_arrow</i>
 						)}
 					</button>
+
 					<button
 						title='reload'
 						className='controls'
 						onClick={handleReload}>
 						<i className='material-icons'>replay</i>
 					</button>
-					<button className='trim' onClick={handleTrim}>
+
+					<button className='trim' onClick={handleRemove}>
 						<i
 							style={{
 								fontSize: '1.2em',
 								color: 'white',
 							}}
-							className='material-icons'>
-							content_cut
+							className='w-full'>
+							Remove
 						</i>
-						Trim
 					</button>
-				</div>
-				<div className='right-container'>
-					<div className='volume-slide-container'>
-						<i className='material-icons zoom-icon'>
-							remove_circle
+
+					<button className='trim' onClick={handleCut}>
+						<i
+							style={{
+								fontSize: '1.2em',
+								color: 'white',
+							}}
+							className='w-full'>
+							Cut
 						</i>
-						<input
-							type='range'
-							min='1'
-							max='1000'
-							value={zoom}
-							onChange={handleZoomSlider}
-							className='slider zoom-slider'
-						/>
-						<i className='material-icons zoom-icon'>add_circle</i>
-					</div>
+					</button>
+
+				</div>
+				<div className='right-container display-flex flex-col'>
 					<div className='volume-slide-container'>
 						{volume > 0 ? (
 							<i className='material-icons'>volume_up</i>
