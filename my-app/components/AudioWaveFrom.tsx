@@ -11,6 +11,12 @@ import wavesurfer from 'wavesurfer.js';
 import { WaveSurfer } from 'wavesurfer.js';
 import { FileContext } from '../contexts/fileContext';
 import { redirect } from 'next/navigation';
+import { MdDelete, MdOutlineReplay } from 'react-icons/md';
+import { RiScissors2Line } from 'react-icons/ri';
+import { FaPause, FaPlay, FaVolumeUp } from 'react-icons/fa';
+import { FaVolumeXmark } from 'react-icons/fa6';
+import { IoArrowBackSharp } from 'react-icons/io5';
+import { useRouter } from 'next/navigation';
 
 const AudioWaveform = () => {
 	const wavesurferRef = useRef(null);
@@ -25,9 +31,11 @@ const AudioWaveform = () => {
 	// fetch file url from the context
 	const { fileURL, setFileURL } = fileContext
 
-	// if (!fileURL) {
-	// 	redirect('/')
-	// }
+	const router = useRouter();
+
+	if (!fileURL) {
+		router.push('/')	
+	}
 
 	// crate an instance of the wavesurfer
 	const [wavesurferObj, setWavesurferObj] = useState<WaveSurfer | null>(null);
@@ -276,62 +284,79 @@ const AudioWaveform = () => {
 		}
 	};
 
+	const handleDownload = () => {
+		if (wavesurferObj) {
+			wavesurferObj.exportPCM().then(pcmData => {
+				const audioBlob = new Blob([pcmData], { type: 'audio/wav' });
+				const audioUrl = URL.createObjectURL(audioBlob);
+				const link = document.createElement('a');
+				link.href = audioUrl;
+				link.download = 'updated_audio.wav';
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+			});
+		}
+	};
+
+	const handleBack = () => {
+		router.push('/');
+	};
 
 	return (
 		<section className='waveform-container'>
-			<div>
-				<div ref={wavesurferRef} id='waveform' />
-				<div ref={timelineRef} id='wave-timeline' />
-			</div>
-			<div className='all-controls'>
-				<div className='left-container display-flex flex-col'>
-					<button
-						title='play/pause'
-						className='controls'
-						onClick={handlePlayPause}>
-						{playing ? (
-							<i className='material-icons'>pause</i>
-						) : (
-							<i className='material-icons'>play_arrow</i>
-						)}
+			<div className='flex flex-col gap-12'>
+
+				<div className='flex flex-row-reverse'>
+					<button onClick={handleBack} className="px-4 py-2 rounded-md border border-neutral-300 bg-neutral-100  text-sm hover:-translate-y-1 transform transition duration-200 hover:shadow-md">
+						<div className='flex flex-row items-center space-x-2'>
+							<IoArrowBackSharp /> <span>Back</span>
+						</div>
+					</button>
+				</div>
+
+				<div>
+					<div ref={wavesurferRef} id='waveform' />
+					<div ref={timelineRef} id='wave-timeline' />
+				</div>
+
+				<div className='flex flex-row-reverse gap-11'>
+
+					<button onClick={handleRemove} className="px-4 py-2 rounded-md border border-neutral-300 bg-neutral-100  text-sm hover:-translate-y-1 transform transition duration-200 hover:shadow-md">
+						<div className='flex flex-row items-center space-x-2'>
+							<MdDelete />
+							<span>Remove</span>
+						</div>
+
 					</button>
 
-					<button
-						title='reload'
-						className='controls'
-						onClick={handleReload}>
-						<i className='material-icons'>replay</i>
-					</button>
-
-					<button className='trim' onClick={handleRemove}>
-						<i
-							style={{
-								fontSize: '1.2em',
-								color: 'white',
-							}}
-							className='w-full'>
-							Remove
-						</i>
-					</button>
-
-					<button className='trim' onClick={handleCut}>
-						<i
-							style={{
-								fontSize: '1.2em',
-								color: 'white',
-							}}
-							className='w-full'>
-							Cut
-						</i>
+					<button onClick={handleCut} className="px-4 py-2 rounded-md border border-neutral-300 bg-neutral-100  text-sm hover:-translate-y-1 transform transition duration-200 hover:shadow-md">
+						<div className='flex flex-row items-center space-x-2'>
+							<RiScissors2Line /> <span>Cut</span>
+						</div>
 					</button>
 
 				</div>
-				<div className='right-container display-flex flex-col'>
-					<div className='volume-slide-container'>
-						{volume > 0 ? (
-							<i className='material-icons'>volume_up</i>
+
+				<div className='flex flex-row space-x-20 border-t border-neutral-400 pt-4'>
+
+					<button onClick={handlePlayPause} className="shadow-[inset_0_0_0_2px_#616467] text-black px-14 py-4 rounded-full tracking-widest uppercase font-bold bg-transparent hover:bg-[#616467] hover:text-white dark:text-neutral-200 transition duration-200">
+						{playing ? (
+							<FaPause className='h-5 w-5' />
 						) : (
-							<i className='material-icons'>volume_off</i>
+							<FaPlay className='h-5 w-5' />
+						)}
+					</button>
+
+					<button onClick={handleReload} className="text-black px-12 py-4 rounded-full tracking-widest uppercase font-bold bg-transparent dark:text-neutral-200 transition duration-200">
+						<MdOutlineReplay className='h-8 w-8' />
+					</button>
+
+					<div className='flex flex-row space-x-2 items-center '>
+						{volume > 0 ? (
+							<FaVolumeUp className='h-8 w-8' />
+						) : (
+							<FaVolumeXmark className='h-8 w-8' />
 						)}
 						<input
 							type='range'
@@ -343,8 +368,15 @@ const AudioWaveform = () => {
 							className='slider volume-slider'
 						/>
 					</div>
+
+					<button onClick={handleDownload} className="shadow-[inset_0_0_0_2px_#616467] text-black px-14 py-4 rounded-full tracking-widest uppercase font-bold bg-transparent hover:bg-[#616467] hover:text-white dark:text-neutral-200 transition duration-200">
+						Save
+					</button>
+
 				</div>
+
 			</div>
+
 		</section>
 	);
 };

@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { FileContext } from '../contexts/fileContext'; 
+import { FileContext } from '../contexts/fileContext';
 import { redirect } from 'next/navigation';
 
 const UploadAudio = () => {
@@ -34,13 +34,18 @@ const UploadAudio = () => {
 
     return (
         <div className='upload-audio'>
-            <i style={{ color: '#531A65' }} className='material-icons audio-icon'>
-                library_music
-            </i>
-            <h1>Upload your audio file here</h1>
-            <button className='upload-btn' onClick={handleButtonClick}>
-                Upload
+            <span style={{ color: '#000000' }} className='text-6xl'>
+                Audio Cutter
+            </span>
+            <h1>Free editor to trim and cut any audio file online</h1>
+
+            <button onClick={handleButtonClick} className="relative inline-flex h-12 w-40 overflow-hidden rounded-full p-[1px] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-50">
+                <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)]" />
+                <span className="inline-flex h-full w-full cursor-pointer items-center justify-center rounded-full bg-slate-950 px-3 py-1 text-sm font-medium text-white backdrop-blur-3xl">
+                    Browse my files
+                </span>
             </button>
+
             <input
                 type='file'
                 id='file'
